@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 import os
@@ -15,6 +16,17 @@ from services.fact_extractor import extract_fact
 load_dotenv()
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",  # cosmic-playground dev server (future integration)
+        "http://localhost:5174",  # BD-42 standalone web UI
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 openai_client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
@@ -48,6 +60,7 @@ def chat(req: ChatRequest):
             reasoning={"effort": "low"},
         )
         reply = response.output_text
+        print(reply)
     else:
         response = openrouter_client.chat.completions.create(
             model="google/gemma-3-4b-it:free",

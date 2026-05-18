@@ -136,6 +136,20 @@ Endpoint at `http://127.0.0.1:8000/chat`; interactive docs at `/docs`.
 
 To switch providers, change `MODEL_PROVIDER` at the top of `main.py` from `"openai"` to `"openrouter"`.
 
+### Web UI (optional)
+
+A minimal React chat client lives in `web/`. Run it alongside the backend.
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Opens at `http://localhost:5174`. Auto-generates a session ID (persisted in `localStorage`), shows fact-capture indicators below assistant messages when the extractor hits, and has a toggleable "Known about you" panel that fetches `/facts/{session_id}` so you can watch the memory accumulate in real time.
+
+The backend has CORS enabled for `localhost:5173` and `localhost:5174` out of the box.
+
 ### Demo flow — the persistent-memory callback
 
 The point of the project. Tell BD-42 a preference; keep chatting about unrelated things; ask BD-42 something tangential later. Watch it bring the preference back unprompted.
@@ -170,6 +184,14 @@ BD-42/
 │   ├── __init__.py
 │   ├── context_builder.py           # prompt assembly (provider-agnostic)
 │   └── fact_extractor.py            # hybrid regex → LLM fact mining
+├── web/                             # React + Vite + Tailwind chat UI
+│   ├── src/
+│   │   ├── App.jsx                  # layout shell + session/facts state
+│   │   ├── components/
+│   │   │   ├── ChatPanel.jsx        # message list, composer, fact-capture indicator
+│   │   │   └── FactsPanel.jsx       # toggleable 'Known about you' panel
+│   │   └── ...
+│   └── package.json
 ├── learning/
 │   └── 01-foundations.md            # architectural walkthrough — read this for the why
 ├── CLAUDE.md                        # guidance for Claude Code sessions on this repo
