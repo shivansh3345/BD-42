@@ -51,7 +51,7 @@ export default function ChatPanel({ sessionId, onChatComplete, onReset, onToggle
         role: 'assistant',
         content: data.reply,
         ts: Date.now(),
-        fact: data.fact_captured,
+        facts: data.fact_captured,
       }
       setMessages((prev) => [...prev, assistantMsg])
       onChatComplete?.()
@@ -128,14 +128,15 @@ export default function ChatPanel({ sessionId, onChatComplete, onReset, onToggle
                   }`}
                 >
                   {m.content}
-                  {m.fact && (
-                    <div className="mt-2 pt-2 border-t border-white/10 text-[11px] text-emerald-400/80">
-                      remembered:{' '}
-                      <span className="text-white/60">{m.fact.content}</span>
-                      <span className="text-white/30">
-                        {' '}
-                        · {m.fact.category}
-                      </span>
+                  {m.facts && m.facts.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-white/10 text-[11px] text-emerald-400/80 space-y-0.5">
+                      {m.facts.map((f, fi) => (
+                        <div key={fi}>
+                          remembered:{' '}
+                          <span className="text-white/60">{f.content}</span>
+                          <span className="text-white/30"> · {f.category}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

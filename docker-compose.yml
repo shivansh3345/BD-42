@@ -1,0 +1,84 @@
+# BD-42 — full local stack: postgres, redis, backend, frontend.
+#
+#   Build + start:  docker compose up --build
+#   Start:          docker compose up -d
+#   Stop:           docker compose down            (data volumes survive)
+#   Reset data:     docker compose down -v         (wipes postgres + redis)
+#
+# After it's up:
+#   frontend  -> http://localhost:5174
+#   backend   -> http://localhost:8000  (docs at /docs)
+#   postgres  -> localhost:5432
+#   redis     -> localhost:6379
+#
+# This is a DEVELOPMENT stack (hot-reload, dev servers). A production
+# variant — static frontend behind nginx, backend without --reload — is
+# a separate task for when BD-42 is actually hosted.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: bd42-postgres
+    environment:
+      POSTGRES_USER: bd42
+      POSTGRES_PASSWORD: bd42
+      POSTGRES_DB: bd42
+    ports:
+      - "5432:5432"
+    volumes:
+      - bd42_pgdata:/var/lib/postgresql/data
+      # init_db.sql runs ONLY on first init (when the volume is empty).
+      - ./db/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bd42 -d bd42"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: bd42-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - bd42_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: bd42-backend
+    # API keys etc. come from .env; the two vars below override it so the
+    # backend reaches postgres/redis by their compose service names.
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://bd42:bd42@postgres:5432/bd42
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app          # mount source for live --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build: ./web
+    container_name: bd42-frontend
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./web:/app          # mount source for Vite HMR
+      - /app/node_modules   # but keep the image's node_modules (host's is wrong-OS)
+    depends_on:
+      - backend
+
+volumes:
+  bd42_pgdata:
+  bd42_redisdata:

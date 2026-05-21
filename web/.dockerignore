@@ -1,0 +1,6 @@
+# Host node_modules is built for the host OS — never copy it into the image.
+node_modules/
+dist/
+.env
+Dockerfile
+.dockerignore

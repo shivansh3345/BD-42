@@ -1,0 +1,11 @@
+# BD-42 backend dependencies.
+# Install into a virtualenv:
+#   python3.12 -m venv venv
+#   ./venv/bin/pip install -r requirements.txt
+fastapi
+uvicorn
+pydantic
+openai
+python-dotenv
+redis
+psycopg[binary]

@@ -56,7 +56,7 @@ def chat(req: ChatRequest):
         response = openai_client.responses.create(
             model="gpt-5-mini",
             input=render_as_single_input(ctx),
-            max_output_tokens=300,
+            max_output_tokens=1000,  # includes reasoning tokens — keep headroom or replies truncate
             reasoning={"effort": "low"},
         )
         reply = response.output_text
@@ -71,11 +71,11 @@ def chat(req: ChatRequest):
     save_message(req.session_id, "user", req.message)
     save_message(req.session_id, "assistant", reply)
 
-    fact = extract_fact(req.message, openai_client)
-    if fact:
-        save_fact(req.session_id, fact["content"], fact["category"], fact["importance"])
+    facts = extract_fact(req.message, openai_client)
+    if facts and facts != []:
+        save_fact(req.session_id, facts)
 
-    return {"reply": reply, "fact_captured": fact}
+    return {"reply": reply, "fact_captured": facts}
 
 
 @app.get("/facts/{session_id}")

@@ -1,11 +1,12 @@
 import redis
 import json
 import time
+import os
 
 redis_client = redis.Redis(
-    host="localhost",
-    port=6379,
-    decode_responses=True
+    host=os.getenv("REDIS_HOST", "localhost"),
+    port=int(os.getenv("REDIS_PORT", "6379")),
+    decode_responses=True,
 )
 
 def _key(session_id: str):
@@ -32,15 +33,16 @@ def clear_history(session_id: str):
     redis_client.delete(_key(session_id))
 
 
-def save_fact(session_id: str, content: str, category: str = "general", importance: float = 0.5):
+def save_fact(session_id: str, facts: list):
     key = _facts_key(session_id)
-    fact = {
-        "content": content,
-        "category": category,
-        "importance": importance,
+    for f in facts:
+        fact = {
+        "content": f.get("content"),
+        "category": f.get("category"),
+        "importance": f.get("importance"),
         "timestamp": time.time(),
-    }
-    redis_client.rpush(key, json.dumps(fact))
+        }
+        redis_client.rpush(key, json.dumps(fact))
 
 def get_facts(session_id: str, limit: int = 20):
     key = _facts_key(session_id)

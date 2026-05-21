@@ -14,12 +14,11 @@ def _format_facts(facts):
     return "\n".join(lines)
 
 
-def build_context(message: str, session_id: str, sim_context: dict) -> dict:
+def build_context(message: str, session_id: str, context: dict) -> dict:
     return {
         "system": PERSONA,
         "history": _format_history(get_history(session_id)),
         "facts": _format_facts(get_facts(session_id)),
-        "sim_context": sim_context,
         "user_message": message,
     }
 
@@ -29,7 +28,6 @@ def _assemble_user_block(ctx: dict) -> str:
     if ctx["facts"]:
         sections.append(f"Known about user:\n{ctx['facts']}")
     sections.append(f"Conversation so far:\n{ctx['history']}")
-    sections.append(f"Simulation context:\n{ctx['sim_context']}")
     sections.append(f"User: {ctx['user_message']}")
     return "\n\n".join(sections)
 
