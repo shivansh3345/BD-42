@@ -6,6 +6,7 @@ export default function ChatPanel({ sessionId, onChatComplete, onReset, onToggle
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isResuming, setIsResuming] = useState(true)
   const [error, setError] = useState(null)
   const scrollRef = useRef(null)
 
@@ -16,14 +17,48 @@ export default function ChatPanel({ sessionId, onChatComplete, onReset, onToggle
     })
   }, [messages, isLoading])
 
+  // On mount and whenever the session changes, ask the backend how to reopen
+  // the chat: silently restore the live transcript (warm Redis), show a
+  // proactive welcome-back greeting (returning user), or start fresh. Resume
+  // is an enhancement — a failure just opens an empty chat, never blocks it.
   useEffect(() => {
+    let cancelled = false
     setMessages([])
     setError(null)
+    setIsResuming(true)
+
+    async function resumeSession() {
+      try {
+        const res = await fetch(`${API_URL}/resume/${sessionId}`, {
+          method: 'POST',
+        })
+        if (!res.ok) throw new Error(`Server error: ${res.status}`)
+        const data = await res.json()
+        if (cancelled) return
+
+        if (data.mode === 'restore') {
+          setMessages(data.messages)
+        } else if (data.mode === 'greeting') {
+          setMessages([{ role: 'assistant', content: data.greeting }])
+        }
+        // mode === 'fresh' → leave messages empty, show the welcome state
+      } catch {
+        // A new session that has raced past this one already reset state.
+        if (!cancelled) setMessages([])
+      } finally {
+        if (!cancelled) setIsResuming(false)
+      }
+    }
+
+    resumeSession()
+    return () => {
+      cancelled = true
+    }
   }, [sessionId])
 
   async function sendMessage(text) {
     const trimmed = text.trim()
-    if (!trimmed || isLoading) return
+    if (!trimmed || isLoading || isResuming) return
 
     const userMsg = { role: 'user', content: trimmed, ts: Date.now() }
     setMessages((prev) => [...prev, userMsg])
@@ -104,7 +139,12 @@ export default function ChatPanel({ sessionId, onChatComplete, onReset, onToggle
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6">
-        {messages.length === 0 && !isLoading ? (
+        {isResuming ? (
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <TypingDots />
+            <div className="text-white/30 text-xs mt-3">BD-42 is waking up…</div>
+          </div>
+        ) : messages.length === 0 && !isLoading ? (
           <div className="h-full flex flex-col items-center justify-center text-center">
             <div className="text-white/30 text-sm">Say hi to BD-42.</div>
             <div className="text-white/20 text-xs mt-2 max-w-sm">
@@ -174,11 +214,11 @@ export default function ChatPanel({ sessionId, onChatComplete, onReset, onToggle
             rows={1}
             className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm placeholder-white/30 resize-none focus:outline-none focus:border-white/30 transition"
             style={{ minHeight: '42px', maxHeight: '160px' }}
-            disabled={isLoading}
+            disabled={isLoading || isResuming}
           />
           <button
             type="submit"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || isResuming}
             className="px-4 py-2.5 bg-white text-black rounded-xl text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/90 transition"
           >
             Send

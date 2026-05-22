@@ -86,6 +86,39 @@ def search_chunks(session_id: str, query: str, top_k: int = 5) -> list[dict]:
     ]
 
 
+def recent_chunks(session_id: str, limit: int = 6) -> list[dict]:
+    """Return a session's most recent chunks, oldest first.
+
+    Unlike search_chunks this ignores meaning entirely — a plain recency read
+    with no embedding call. Used to reconstruct conversational context: the
+    welcome-back greeting now, the cache-miss fallback later.
+    """
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT content, role, source_type, importance, created_at
+                FROM memories
+                WHERE session_id = %s
+                ORDER BY created_at DESC, id DESC
+                LIMIT %s
+                """,
+                (session_id, limit),
+            )
+            rows = cur.fetchall()
+    rows.reverse()  # query returns newest-first; callers want chronological
+    return [
+        {
+            "content": row[0],
+            "role": row[1],
+            "source_type": row[2],
+            "importance": row[3],
+            "created_at": row[4],
+        }
+        for row in rows
+    ]
+
+
 def clear_chunks(session_id: str) -> None:
     """Delete all stored chunks for a session.
 
